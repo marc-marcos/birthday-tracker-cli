@@ -1,17 +1,16 @@
 mod birthday;
 mod database;
-use chrono::Datelike;
 use clap::Parser;
 use database::{get_birthdays_from_database, write_to_database};
-use rusqlite::{Connection, Result};
-use std::fs::File;
 
-/// Simple program to greet a person
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
     #[arg(short, long)]
     a_flag: bool,
+
+    #[arg(short, long)]
+    create: bool,
 
     #[arg(required_if_eq("a_flag", "true"))]
     name: Option<String>,
@@ -32,7 +31,11 @@ struct Args {
 fn main() {
     let args = Args::parse();
 
-    let connection: Connection = database::open_database("database.db");
+    let connection = if args.create {
+        database::create_database()
+    } else {
+        database::open_database("database.db")
+    };
 
     if args.a_flag {
         let new_bd: birthday::Birthday = birthday::Birthday::build(

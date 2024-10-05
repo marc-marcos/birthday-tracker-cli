@@ -1,4 +1,5 @@
 # birthday-tracker-cli
 
-- Check if the database exists and if it doesn't create it with the already written function.
-
+- `-c`: Create the database.
+- `-a` \[name] \[surname] \[day] \[month] \[year]: Creates a new birthday and stores it in the database.
+- `_`: Fetch the database and print the birthdays for the next week.
