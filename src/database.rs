@@ -5,7 +5,7 @@ use std::io::Write;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
 pub fn create_database() -> Connection {
-    let connection = Connection::open("database.db").unwrap();
+    let connection = Connection::open("/var/tmp/bd_database.db").unwrap();
 
     connection
         .execute(
@@ -45,28 +45,22 @@ pub fn get_birthdays_from_database(conn: &Connection) -> Result<()> {
     let one_week = chrono::TimeDelta::days(7);
     let final_date = current_date + one_week;
 
-    // let mut stmt = conn.prepare("SELECT name, surname, day, month, year FROM Birthday WHERE () AND ()")?;
     let mut stmt = conn.prepare(
         "SELECT name, surname, day, month, year 
      FROM Birthday
      WHERE 
         (
-            -- Check if birthday falls between today and the limit within the same year
-            (month > ?1 OR (month = ?1 AND day >= ?2))
-            AND 
-            (month < ?3 OR (month = ?3 AND day <= ?4))
+            -- Check if birthday is today
+            (month = ?1 AND day = ?2)
+            OR
+            -- Check if birthday falls between today and the next 7 days
+            (
+                (month > ?1 OR (month = ?1 AND day > ?2))
+                AND 
+                (month < ?3 OR (month = ?3 AND day <= ?4))
+            )
         )
-        OR
-        (
-            -- If today is in the current year and the limit is in the next year
-            (month > ?1 OR (month = ?1 AND day >= ?2))
-        )
-        OR
-        (
-            -- If the birthday is in the next year, before the limit date
-            (month < ?3 OR (month = ?3 AND day <= ?4))
-        )     
-        ORDER BY 
+     ORDER BY 
         (month - ?1) * 31 + (day - ?2) ASC",
     )?;
 

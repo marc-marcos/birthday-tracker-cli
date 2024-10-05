@@ -34,7 +34,7 @@ fn main() {
     let connection = if args.create {
         database::create_database()
     } else {
-        database::open_database("database.db")
+        database::open_database("/var/tmp/bd_database.db")
     };
 
     if args.a_flag {
