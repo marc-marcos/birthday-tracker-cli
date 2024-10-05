@@ -1,6 +1,8 @@
 use crate::birthday;
 use chrono::Datelike;
 use rusqlite::{params, Connection, Result};
+use std::io::Write;
+use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
 pub fn create_database() -> Connection {
     let connection = Connection::open("database.db").unwrap();
@@ -46,70 +48,73 @@ pub fn get_birthdays_from_database(conn: &Connection) -> Result<()> {
     // let mut stmt = conn.prepare("SELECT name, surname, day, month, year FROM Birthday WHERE () AND ()")?;
     let mut stmt = conn.prepare(
         "SELECT name, surname, day, month, year 
-         FROM Birthday
-         WHERE 
-            (
-                -- If birthdays fall between today and the limit within the same year
-                year = ?1 AND
-                (
-                    (month > ?2 OR (month = ?2 AND day >= ?3))
-                    AND 
-                    (month < ?4 OR (month = ?4 AND day <= ?5))
-                )
-            )
-            OR
-            (
-                -- If today is in the current year and the limit is in the next year
-                year = ?1 AND
-                (month > ?2 OR (month = ?2 AND day >= ?3))
-            )
-            OR
-            (
-                -- If the birthday is in the next year, before the limit date
-                year = ?6 AND
-                (month < ?4 OR (month = ?4 AND day <= ?5))
-            )",
+     FROM Birthday
+     WHERE 
+        (
+            -- Check if birthday falls between today and the limit within the same year
+            (month > ?1 OR (month = ?1 AND day >= ?2))
+            AND 
+            (month < ?3 OR (month = ?3 AND day <= ?4))
+        )
+        OR
+        (
+            -- If today is in the current year and the limit is in the next year
+            (month > ?1 OR (month = ?1 AND day >= ?2))
+        )
+        OR
+        (
+            -- If the birthday is in the next year, before the limit date
+            (month < ?3 OR (month = ?3 AND day <= ?4))
+        )     
+        ORDER BY 
+        (month - ?1) * 31 + (day - ?2) ASC",
     )?;
 
     let birthday_iter = stmt.query_map(
         params![
-            current_date.year(),
             current_date.month(),
             current_date.day(),
-            current_date.month(),
-            current_date.day(),
-            current_date.year()
+            final_date.month(),
+            final_date.day(),
         ],
         |row| {
-            Ok((
-                row.get(0)?, // name
-                row.get(1)?, // surname
-                row.get(2)?, // day
-                row.get(3)?, // month
-                row.get(4)?, // year
-            ))
+            Ok(birthday::Birthday {
+                name: row.get(0)?,    // name
+                surname: row.get(1)?, // surname
+                day: row.get(2)?,     // day
+                month: row.get(3)?,   // month
+                year: row.get(4)?,    // year
+            })
         },
     )?;
 
-    let final_vec: Vec<birthday::Birthday> = vec![];
+    let mut stdout = StandardStream::stdout(ColorChoice::Always);
 
-    for result in birthday_iter {
-        // Handle the Result properly
-        match result {
-            Ok((name, surname, day, month, year)) => {
-                // Push a new Birthday struct into the vector
-                final_vec.push(birthday::Birthday::build(name?, surname?, day, month, year));
-            }
-            Err(e) => {
-                // Handle the error case appropriately (e.g., log the error or return it)
-                eprintln!("Error fetching birthday: {}", e);
-                return Err(e); // Optionally return the error here
-            }
+    for birthday in birthday_iter {
+        let current_bd = birthday.unwrap();
+
+        // Bold and pretty printing
+        if current_bd.day as u32 == current_date.day()
+            && current_bd.month as u32 == current_date.month()
+        {
+            stdout
+                .set_color(ColorSpec::new().set_fg(Some(Color::Magenta)))
+                .unwrap();
+            writeln!(
+                &mut stdout,
+                "{}/{} - {} {}",
+                current_bd.day, current_bd.month, current_bd.name, current_bd.surname
+            )
+            .unwrap();
+            stdout.reset().unwrap();
+        } else {
+            writeln!(
+                &mut stdout,
+                "{}/{} - {} {}",
+                current_bd.day, current_bd.month, current_bd.name, current_bd.surname
+            )
+            .unwrap();
         }
-    }
-
-    for birthday in final_vec {
-        dbg!(birthday);
     }
 
     Ok(())
