@@ -1,5 +1,9 @@
 # birthday-tracker-cli
 
+<div align="center">
+  <img src="img/readme_img.png" alt="Description of image" width="500"/>
+</div>
+
 ## Installation
 
 - `sudo chmod +x install.sh`
